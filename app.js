@@ -1,81 +1,95 @@
 setTimeout(() => {
-    return startApplication();
+    let app = new Application();
+    return app.boot();
 }, 1000);
 
-let button = `
-    <button id="youtube-watched-button">Watched</button>
-`;
+class ApplicationMethods {
+    getStorageData() {
+        return new Promise((resolve, reject) => {
+            chrome.storage.sync.get({
+                watched: []
+            }, (response) => {
+                resolve(response);
+            });
+        })
+    };
 
-let watchedButton = $('#youtube-watched-button');
+    setStorageData(data) {
+        chrome.storage.sync.set({
+            watched: data
+        });
+    };
 
-let getVideoId = () => {
-    let urlParams = new URLSearchParams(window.location.search);
-    return urlParams.get('v');
-};
+    clearStorageData() {
+        chrome.storage.sync.clear();
+    };
 
-let isWatched = (setData) => {
-    let currentVideoId = getVideoId();
-    return !!setData.has(currentVideoId);
-};
+    getVideoId() {
+        let urlParams = new URLSearchParams(window.location.search);
+        return urlParams.get('v');
+    };
 
-let createButton = (setData) => {
-    $('#top-level-buttons').append(button);
-    watchedButton.click(() => {
-        let videoId = getVideoId();
-        setData.add(videoId);
+    isWatched(setData) {
+        let currentVideoId = this.getVideoId();
+        return !!setData.has(currentVideoId);
+    };
+
+    toggleStatus(setData) {
+
+        let videoId = this.getVideoId();
+
+        if(this.isWatched(setData)) {
+            console.log('Video watched');
+            console.log(this.watchedButton);
+            this.watchedButton.text('Unwatch');
+            setData.delete(videoId);
+        } else {
+            console.log('Video not watched');
+            console.log(this.watchedButton);
+            this.watchedButton.text('Watch');
+            setData.add(videoId);
+        }
         console.log('addSetData', setData);
+
+        // Convert set to array
         let arrayData = Array.from(setData);
         console.log('arrayData', arrayData);
-        setStorageData(arrayData);
-    });
-};
 
-/**
- * Storage
- */
-let getStorageData = () => {
-    return new Promise((resolve, reject) => {
-        chrome.storage.sync.get({
-            watched: []
-        }, (response) => {
-            resolve(response);
-        });
-    })
-};
+        // Save the new array to chrome storage
+        this.setStorageData(arrayData);
+    }
+}
 
-let setStorageData = (data) => {
-    chrome.storage.sync.set({
-        watched: data
-    });
-};
+class Application extends ApplicationMethods {
 
-let clearStorageData = () => {
-    chrome.storage.sync.clear();
-};
+    async boot() {
+        // clearStorageData()
 
-/**
- * Application
- */
-let startApplication = async () => {
-    // clearStorageData()
+        // Get storage data array
+        let storageData = await this.getStorageData();
+        console.log('storageData', storageData);
 
-    // Get storage data array
-    let storageData = await getStorageData();
-    console.log('storageData', storageData);
+        // Convert storage data array to set
+        let setData = new Set(storageData.watched);
+        console.log('setData', setData);
 
-    // Convert storage data array to set
-    let setData = new Set(storageData.watched);
-    console.log('setData', setData);
-
-    // Check if current url has been watched
-    if(isWatched(setData)) {
-        console.log('Video watched');
-        watchedButton.text('Unwatch');
-    } else {
-        console.log('Video not watched');
-        watchedButton.text('Watch');
+        // Create button
+        this.renderView(setData);
     }
 
-    // Create button
-    createButton(setData);
-};
+    renderView(setData) {
+        // Set watched button
+        this.watchedButton = $(`
+            <button id="youtube-watched-button"></button>
+        `);
+        $('#top-level-buttons').append(this.watchedButton);
+
+        // init toggle status
+        this.toggleStatus(setData);
+
+        // On button click
+        this.watchedButton.click(() => {
+            this.toggleStatus(setData);
+        });
+    };
+}
