@@ -1,0 +1,23 @@
+{
+  "manifest_version": 2,
+  "name": "Getting started example",
+  "description": "This extension allows the user to change the background color of the current page.",
+  "version": "1.0",
+  "permissions": [
+    "activeTab",
+    "storage"
+  ],
+  "content_scripts": [
+    {
+      "matches": [
+        "http://*.youtube.com/*",
+        "https://*.youtube.com/*"
+      ],
+      "js": [
+        "jquery.min.js",
+        "app.js"
+      ],
+      "run_at": "document_end"
+    }
+  ]
+}
